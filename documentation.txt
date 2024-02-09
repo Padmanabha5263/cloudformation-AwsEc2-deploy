@@ -1,0 +1,117 @@
+problem statement
+1. create an clodformation template to launch ec2 instance with following options
+    instancetype : t2.micro, t2.small
+    add user data script
+    #!/bin/bash
+    sudo yum update -y
+    sudo amazon-linux-extras install nginx1 -y
+    sudo systemctl enable nginx
+    sudo systemctl start nginx
+    add security group with following configuration
+    expose 80 for tcp
+    expose 22 for ssh
+
+
+
+
+we can select instance type that we need to launch from the input
+"Parameters":{
+        "pninstancetype":{
+            "Type":"String",
+            "Default":"t2.micro",
+            "AllowedValues":["t2.micro", "t2.small"],
+            "Description":"this is the input options created to select instance type"
+        }
+    },
+
+security group configuration
+-------------------------------
+2 methods to configure
+1. we can manually create security group and get that security group id and paster in SecurityGroupId key
+2. write code to create security group resource and provide its reference to SecurityGroupId key
+
+we can manually create security group and get that security group id and paster in SecurityGroupId key:
+goto aws console and create security group with port options which ever ports you need to expose 
+once its created copy the security group id and paste it as a value for SecurityGroupId key inside Instance resource 
+"SecurityGroupIds": [
+    "sg-0c80d144ddd26ebe5"
+],
+
+write code to create security group resource and provide its reference to SecurityGroupId key:
+we can use securitygroupid's key in instance if already configured security ports and all if not 
+create seperate security resource and reference for SecurityGroupId using getAttr[this will return security groupid]  inside Instance resource 
+{
+  "InstanceSecurityGroup": {
+    "Type": "AWS::EC2::SecurityGroup",
+    "Properties": {
+      "GroupName": "AllowEC2Traffic",
+      "GroupDescription": "Enable SSH access and HTTP access on the inbound port",
+      "SecurityGroupIngress": [
+        {
+          "IpProtocol": "tcp",
+          "FromPort": 80,
+          "ToPort": 80,
+          "CidrIp": "0.0.0.0/0"
+        },
+        {
+          "IpProtocol": "tcp",
+          "FromPort": 22,
+          "ToPort": 22,
+          "CidrIp": "0.0.0.0/0"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "InstanceSecurityGroup"
+        }
+      ]
+    }
+  }
+}
+
+writing userdata inside the instance resource
+--------------------------------------------------
+we can run the userdata script in instance at instance booting time
+insert userdata script st inside the instance resource 
+key name is UserData as shown in below
+user data shoud be base64 encoaded
+
+"UserData":{
+        "Fn::Base64":{
+        "Fn::Join":[
+                "",
+                [
+                    "#!/bin/bash\n",
+                    "sudo yum update -y\n",
+                    "sudo amazon-linux-extras install nginx1 -y\n",
+                    "sudo systemctl enable nginx\n",
+                    "sudo systemctl start nginx\n"
+                ]
+            ]
+        }
+},
+
+for more information
+https://medium.com/sai-ops/installing-nginx-using-aws-ec2-user-data-5590fdbe528d
+
+
+reference cloudformation json template
+------------------------------------------- 
+
+{
+    "Parameters":{
+        "pninstancetype":{
+            // parameters definations
+        }
+    },
+
+    "Resources": {
+        "pninstance": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                // properties
+            }
+        }
+    }
+}
